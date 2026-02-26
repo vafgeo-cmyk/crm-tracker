@@ -669,6 +669,29 @@
     }
   }
 
+  /* ── Tag input (multi-select) ── */
+  .tag-input-wrap {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 7px 10px; min-height: 44px;
+    cursor: text; transition: border-color 0.15s; align-items: center;
+  }
+  .tag-input-wrap:focus-within { border-color: var(--blue); }
+  .tag-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(26,107,255,0.15); border: 1px solid rgba(26,107,255,0.3);
+    color: var(--blue-light); border-radius: 20px;
+    padding: 2px 8px; font-size: 12px; white-space: nowrap;
+  }
+  .tag-pill-remove { cursor: pointer; color: var(--text3); font-size: 11px; margin-left: 2px; line-height: 1; }
+  .tag-pill-remove:hover { color: var(--red); }
+  .tag-text-input {
+    border: none; background: transparent; outline: none;
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: var(--text); min-width: 100px; flex: 1;
+  }
+  .tag-text-input::placeholder { color: var(--text3); }
+
   body:not(.is-admin) .admin-only { display: none !important; }
   .auth-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s; }
   .auth-overlay.open { opacity:1;pointer-events:all; }
@@ -804,7 +827,10 @@
         <div class="form-row">
           <div>
             <label class="form-label">DMG Product</label>
-            <input type="text" class="form-input" id="input-product" placeholder="e.g., Mail Subscriptions">
+            <div class="tag-input-wrap" id="product-tag-wrap" onclick="document.getElementById('product-tag-input').focus()">
+              <input class="tag-text-input" id="product-tag-input" placeholder="Type and press Enter…"
+                onkeydown="handleTagKey(event,'products')" type="text">
+            </div>
           </div>
           <div>
             <label class="form-label">Status</label>
@@ -832,11 +858,17 @@
         <div class="form-row">
           <div>
             <label class="form-label">CRM Owner</label>
-            <input type="text" class="form-input" id="input-crm-owner" placeholder="e.g., Ken/Yvienne">
+            <div class="tag-input-wrap" id="crm-owner-tag-wrap" onclick="document.getElementById('crm-owner-tag-input').focus()">
+              <input class="tag-text-input" id="crm-owner-tag-input" placeholder="Type and press Enter…"
+                onkeydown="handleTagKey(event,'crmOwners')" type="text">
+            </div>
           </div>
           <div>
             <label class="form-label">Marketing Owner</label>
-            <input type="text" class="form-input" id="input-marketing-owner" placeholder="e.g., Dan">
+            <div class="tag-input-wrap" id="mkt-owner-tag-wrap" onclick="document.getElementById('mkt-owner-tag-input').focus()">
+              <input class="tag-text-input" id="mkt-owner-tag-input" placeholder="Type and press Enter…"
+                onkeydown="handleTagKey(event,'mktOwners')" type="text">
+            </div>
           </div>
         </div>
       </div>
@@ -903,6 +935,67 @@ let isAdmin = false;
 // ── Data store ──
 let tasks = [];
 let editingTaskId = null;
+
+// ── Tag input state ──
+const tagState = { products: [], crmOwners: [], mktOwners: [] };
+const tagConfig = {
+  products:  { wrap: 'product-tag-wrap',   input: 'product-tag-input' },
+  crmOwners: { wrap: 'crm-owner-tag-wrap', input: 'crm-owner-tag-input' },
+  mktOwners: { wrap: 'mkt-owner-tag-wrap', input: 'mkt-owner-tag-input' }
+};
+
+function renderTagPills(field) {
+  const { wrap, input } = tagConfig[field];
+  const wrapEl = document.getElementById(wrap);
+  const inputEl = document.getElementById(input);
+  wrapEl.querySelectorAll('.tag-pill').forEach(t => t.remove());
+  tagState[field].forEach((val, i) => {
+    const pill = document.createElement('div');
+    pill.className = 'tag-pill';
+    pill.innerHTML = val + '<span class="tag-pill-remove" onclick="removeTag(\''+field+'\','+i+')">✕</span>';
+    wrapEl.insertBefore(pill, inputEl);
+  });
+  inputEl.placeholder = tagState[field].length === 0 ? 'Type and press Enter…' : 'Add more…';
+}
+
+function handleTagKey(e, field) {
+  const input = e.target;
+  if ((e.key === 'Enter' || e.key === ',') && input.value.trim()) {
+    e.preventDefault();
+    const val = input.value.trim().replace(/,$/, '');
+    if (val && !tagState[field].includes(val)) {
+      tagState[field].push(val);
+      renderTagPills(field);
+    }
+    input.value = '';
+  } else if (e.key === 'Backspace' && !input.value && tagState[field].length > 0) {
+    tagState[field].pop();
+    renderTagPills(field);
+  }
+}
+
+function removeTag(field, idx) {
+  tagState[field].splice(idx, 1);
+  renderTagPills(field);
+}
+
+function resetTagFields() {
+  tagState.products = [];
+  tagState.crmOwners = [];
+  tagState.mktOwners = [];
+  renderTagPills('products');
+  renderTagPills('crmOwners');
+  renderTagPills('mktOwners');
+}
+
+function loadTagFields(task) {
+  tagState.products  = Array.isArray(task.products)   ? [...task.products]   : (task.product   ? [task.product]   : []);
+  tagState.crmOwners = Array.isArray(task.crmOwners)  ? [...task.crmOwners]  : (task.crmOwner  ? [task.crmOwner]  : []);
+  tagState.mktOwners = Array.isArray(task.mktOwners)  ? [...task.mktOwners]  : (task.marketingOwner ? [task.marketingOwner] : []);
+  renderTagPills('products');
+  renderTagPills('crmOwners');
+  renderTagPills('mktOwners');
+}
 
 // ── Toast ──
 function showToast(msg) {
@@ -1003,8 +1096,11 @@ function updateStats() {
 
 // ── Filters ──
 function populateFilters() {
-  const products = new Set(tasks.map(t => t.product).filter(Boolean));
-  const owners = new Set([...tasks.map(t => t.crmOwner).filter(Boolean), ...tasks.map(t => t.marketingOwner).filter(Boolean)]);
+  const products = new Set(tasks.flatMap(t => t.products || (t.product ? [t.product] : [])));
+  const owners = new Set(tasks.flatMap(t => [
+    ...(t.crmOwners || (t.crmOwner ? [t.crmOwner] : [])),
+    ...(t.mktOwners || (t.marketingOwner ? [t.marketingOwner] : []))
+  ]));
   const pf = document.getElementById('product-filter');
   const of_ = document.getElementById('owner-filter');
   pf.innerHTML = '<option value="">All Products</option>';
@@ -1046,10 +1142,10 @@ function renderTasks() {
     const ln = task.notes && task.notes.length > 0 ? task.notes[0] : null;
     const np = ln ? `<div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px 10px;background:var(--navy3);border:1px solid var(--border);border-radius:6px"><span style="font-size:10px;color:var(--text3)">💬</span><span style="font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ln.text}</span><span style="font-size:9px;color:var(--text3);flex-shrink:0">${new Date(ln.timestamp).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span></div>` : '';
     return `<tr onclick="openTaskModal(${task.id})">
-      <td>${task.product ? `<span class="product-badge">${task.product}</span>` : '—'}</td>
+      <td>${(task.products||[task.product]).filter(Boolean).map(p=>`<span class="product-badge" style="margin-right:3px">${p}</span>`).join('')||'—'}</td>
       <td><div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font-weight:500;color:var(--text)">${task.subject||'Untitled'}</div>${task.jiraLink?`<a href="${task.jiraLink}" target="_blank" class="jira-link" onclick="event.stopPropagation()">🔗 Jira</a>`:''}</div>${task.description?`<div style="font-size:12px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px">${task.description.substring(0,80)}${task.description.length>80?'...':''}</div>`:''}${np}</td>
-      <td>${task.crmOwner?`<span class="owner-badge">👤 ${task.crmOwner}</span>`:'—'}</td>
-      <td>${task.marketingOwner?`<span class="owner-badge">👤 ${task.marketingOwner}</span>`:'—'}</td>
+      <td>${(task.crmOwners||[task.crmOwner]).filter(Boolean).map(o=>`<span class="owner-badge" style="margin-bottom:2px">👤 ${o}</span>`).join('<br>')||'—'}</td>
+      <td>${(task.mktOwners||[task.marketingOwner]).filter(Boolean).map(o=>`<span class="owner-badge" style="margin-bottom:2px">👤 ${o}</span>`).join('<br>')||'—'}</td>
       <td><span class="status-badge ${sc}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>${task.status}</span></td>
       <td>${dd}</td><td>—</td></tr>`;
   }).join('');
@@ -1062,8 +1158,8 @@ function renderTasks() {
       <div class="task-card-header"><div class="task-card-title">${task.subject||'Untitled'}</div><span class="status-badge ${sc}" style="font-size:10px;padding:4px 8px"><span style="width:5px;height:5px;border-radius:50%;background:currentColor"></span>${task.status}</span></div>
       ${task.description?`<div class="task-card-body">${task.description.substring(0,120)}${task.description.length>120?'...':''}</div>`:''}
       ${ln?`<div style="background:var(--navy3);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:10px">💬</span><span style="font-size:10px;color:var(--text3);font-weight:600">Latest Note</span><span style="font-size:9px;color:var(--text3);margin-left:auto">${new Date(ln.timestamp).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span></div><div style="font-size:12px;color:var(--text2);line-height:1.4">${ln.text.substring(0,100)}${ln.text.length>100?'...':''}</div></div>`:''}
-      <div class="task-card-meta">${task.product?`<span class="product-badge" style="font-size:10px;padding:3px 8px">${task.product}</span>`:''}${task.jiraLink?`<a href="${task.jiraLink}" target="_blank" class="jira-link" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation()">🔗 Jira</a>`:''}</div>
-      <div class="task-card-footer"><div class="task-card-owners">${task.crmOwner?`<div>👤 CRM: <span style="color:var(--text2);font-weight:500">${task.crmOwner}</span></div>`:''} ${task.marketingOwner?`<div>📱 Marketing: <span style="color:var(--text2);font-weight:500">${task.marketingOwner}</span></div>`:''}</div><div style="text-align:right;font-size:11px;color:var(--text3)">📅 ${dd}</div></div>
+      <div class="task-card-meta">${(task.products||[task.product]).filter(Boolean).map(p=>`<span class="product-badge" style="font-size:10px;padding:3px 8px">${p}</span>`).join('')}${task.jiraLink?`<a href="${task.jiraLink}" target="_blank" class="jira-link" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation()">🔗 Jira</a>`:''}</div>
+      <div class="task-card-footer"><div class="task-card-owners">${(task.crmOwners||[task.crmOwner]).filter(Boolean).map(o=>`<div>👤 CRM: <span style="color:var(--text2);font-weight:500">${o}</span></div>`).join('')}${(task.mktOwners||[task.marketingOwner]).filter(Boolean).map(o=>`<div>📱 Mktg: <span style="color:var(--text2);font-weight:500">${o}</span></div>`).join('')}</div><div style="text-align:right;font-size:11px;color:var(--text3)">📅 ${dd}</div></div>
     </div>`;
   }).join('');
 }
@@ -1075,7 +1171,8 @@ function openAddModal() {
   document.getElementById('modal-title').textContent = 'Add New Task';
   document.getElementById('save-btn-text').textContent = 'Save Task';
   document.getElementById('delete-btn').style.display = 'none';
-  ['input-product','input-subject','input-description','input-crm-owner','input-marketing-owner','input-due-date','input-data-required','input-jira'].forEach(id => document.getElementById(id).value = '');
+  ['input-subject','input-description','input-due-date','input-data-required','input-jira'].forEach(id => document.getElementById(id).value = '');
+  resetTagFields();
   document.getElementById('input-status').value = 'Not Started';
   document.getElementById('input-risk').value = '';
   document.getElementById('notes-section-top').style.display = 'none';
@@ -1089,11 +1186,9 @@ function openTaskModal(taskId) {
   document.getElementById('modal-title').textContent = 'Edit Task';
   document.getElementById('save-btn-text').textContent = 'Update Task';
   document.getElementById('delete-btn').style.display = isAdmin ? 'block' : 'none';
-  document.getElementById('input-product').value = task.product || '';
+  loadTagFields(task);
   document.getElementById('input-subject').value = task.subject || '';
   document.getElementById('input-description').value = task.description || '';
-  document.getElementById('input-crm-owner').value = task.crmOwner || '';
-  document.getElementById('input-marketing-owner').value = task.marketingOwner || '';
   document.getElementById('input-status').value = task.status || 'Not Started';
   document.getElementById('input-due-date').value = task.dueDate || '';
   document.getElementById('input-risk').value = task.risk || '';
@@ -1130,11 +1225,14 @@ async function saveTask() {
   const subject = document.getElementById('input-subject').value.trim();
   if (!subject) { alert('Please enter a subject'); return; }
   const data = {
-    product: document.getElementById('input-product').value.trim(),
+    products: [...tagState.products],
+    product: tagState.products[0] || '',
+    crmOwners: [...tagState.crmOwners],
+    crmOwner: tagState.crmOwners[0] || '',
+    mktOwners: [...tagState.mktOwners],
+    marketingOwner: tagState.mktOwners[0] || '',
     subject,
     description: document.getElementById('input-description').value.trim(),
-    crmOwner: document.getElementById('input-crm-owner').value.trim(),
-    marketingOwner: document.getElementById('input-marketing-owner').value.trim(),
     status: document.getElementById('input-status').value,
     dueDate: document.getElementById('input-due-date').value,
     risk: document.getElementById('input-risk').value,
