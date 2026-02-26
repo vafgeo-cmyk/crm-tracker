@@ -885,6 +885,11 @@
   </div>
 
 <script type="module">
+// ── Firebase imports (must be at top of module) ──
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
 // Data store
 let tasks = [];
 let editingTaskId = null;
@@ -899,9 +904,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ── Firebase ──
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDdDCU32Kv1nDwz5l33tIkQ37W6DznV3sg",
@@ -929,9 +931,9 @@ function applyAdminUI(loggedIn) {
 
 function showLoginModal() {
   document.getElementById('auth-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('auth-email').focus(), 100);
   document.getElementById('auth-error').classList.remove('show');
   document.getElementById('auth-password').value = '';
+  setTimeout(() => document.getElementById('auth-email').focus(), 150);
 }
 
 function hideLoginModal() {
