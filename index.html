@@ -750,15 +750,15 @@
         <div class="header-subtitle">Track all CRM projects and tasks in one place</div>
       </div>
       <div style="display: flex; gap: 12px;">
-        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="window.importData(event)">
+        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
         <button class="export-btn" onclick="document.getElementById('import-file').click()">📤 Import</button>
-        <button class="export-btn" onclick="window.exportToJSON()">📥 Export</button>
-        <button class="btn btn-primary admin-only" id="btn-add-task" onclick="window.openAddModal()">+ Add Task</button>
+        <button class="export-btn" onclick="exportToJSON()">📥 Export</button>
+        <button class="btn btn-primary admin-only" id="btn-add-task" onclick="openAddModal()">+ Add Task</button>
         <div id="admin-logged-in" style="display:none">
-          <span class="admin-badge" id="admin-badge" onclick="window.doLogout()">🟢 Admin · Sign out</span>
+          <span class="admin-badge" id="admin-badge" onclick="doLogout()">🟢 Admin · Sign out</span>
         </div>
         <div id="admin-logged-out">
-          <span class="admin-lock-btn" id="admin-lock-btn" onclick="window.showLoginModal()">🔒 Admin Login</span>
+          <span class="admin-lock-btn" id="admin-lock-btn" onclick="showLoginModal()">🔒 Admin Login</span>
         </div>
       </div>
     </div>
@@ -833,11 +833,11 @@
   </div>
 
   <!-- Task Detail Modal -->
-  <div class="modal" id="task-modal" onclick="window.closeModal(event)">
+  <div class="modal" id="task-modal" onclick="closeModal(event)">
     <div class="modal-content" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div class="modal-title" id="modal-title">Task Details</div>
-        <button class="close-btn" onclick="window.closeModal()">×</button>
+        <button class="close-btn" onclick="closeModal()">×</button>
       </div>
 
       <!-- Notes section moved to top for existing projects -->
@@ -846,7 +846,7 @@
         <div id="notes-list-top"></div>
         <div class="add-note-form">
           <input type="text" class="note-input" id="new-note-input-top" placeholder="Add a note...">
-          <button class="btn-add-note" onclick="window.addNote()">Add Note</button>
+          <button class="btn-add-note" onclick="addNote()">Add Note</button>
         </div>
       </div>
 
@@ -920,21 +920,19 @@
       </div>
 
       <div style="display: flex; gap: 12px; margin-top: 28px;">
-        <button class="btn btn-primary" onclick="window.saveTask()" style="flex: 1;">
+        <button class="btn btn-primary" onclick="saveTask()" style="flex: 1;">
           <span id="save-btn-text">Save Task</span>
         </button>
-        <button class="btn export-btn" onclick="window.closeModal()" style="flex: 0 0 auto;">Cancel</button>
-        <button class="btn" onclick="window.deleteTask()" id="delete-btn" style="background: var(--red); color: white; flex: 0 0 auto; display: none;">Delete</button>
+        <button class="btn export-btn" onclick="closeModal()" style="flex: 0 0 auto;">Cancel</button>
+        <button class="btn" onclick="deleteTask()" id="delete-btn" style="background: var(--red); color: white; flex: 0 0 auto; display: none;">Delete</button>
       </div>
     </div>
   </div>
 
-<script type="module">
-// ── Firebase imports MUST be first in a module script ──
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script>
 // ── Firebase config ──
 const firebaseConfig = {
   apiKey: "AIzaSyDdDCU32Kv1nDwz5l33tIkQ37W6DznV3sg",
@@ -944,10 +942,10 @@ const firebaseConfig = {
   messagingSenderId: "449784720463",
   appId: "1:449784720463:web:027c8e6ff4abb090e98e3a"
 };
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-const auth = getAuth(fbApp);
-const DATA_DOC = doc(db, 'crm', 'data');
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const DATA_DOC = db.collection('crm').doc('data');
 let isSyncing = false;
 let isAdmin = false;
 
@@ -981,7 +979,7 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in…';
   errEl.classList.remove('show');
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    await auth.signInWithEmailAndPassword(email, password);
     hideLoginModal();
     showToast('✅ Signed in as admin');
   } catch(e) {
@@ -992,7 +990,7 @@ async function doLogin() {
   }
 }
 async function doLogout() {
-  await signOut(auth);
+  await auth.signOut();
   showToast('👋 Signed out');
 }
 function applyAdminUI(loggedIn) {
@@ -1001,31 +999,29 @@ function applyAdminUI(loggedIn) {
   document.getElementById('admin-logged-in').style.display = loggedIn ? '' : 'none';
   document.getElementById('admin-logged-out').style.display = loggedIn ? 'none' : '';
 }
-onAuthStateChanged(auth, user => applyAdminUI(!!user));
+auth.onAuthStateChanged(user => applyAdminUI(!!user));
 
 // ── Expose to window (required for module scripts) ──
-window.showLoginModal = showLoginModal;
-window.doLogin = doLogin;
-window.doLogout = doLogout;
+// functions are global in classic script — no window export needed
 
 // ── Firebase load/save ──
 async function loadTasks() {
   try {
-    const snap = await getDoc(DATA_DOC);
-    if (snap.exists()) tasks = snap.data().tasks || [];
+    const snap = await DATA_DOC.get();
+    if (snap.exists) tasks = snap.data().tasks || [];
   } catch(e) { console.warn('Load failed', e); }
 }
 async function saveTasks() {
   if (!isAdmin) return;
   try {
     isSyncing = true;
-    await setDoc(DATA_DOC, { tasks: JSON.parse(JSON.stringify(tasks)), savedAt: new Date().toISOString() });
+    await DATA_DOC.set({ tasks: JSON.parse(JSON.stringify(tasks)), savedAt: new Date().toISOString() });
     showToast('✓ Saved');
   } catch(e) { showToast('⚠️ Save failed'); }
   finally { isSyncing = false; }
 }
 function startRealtimeSync() {
-  onSnapshot(DATA_DOC, snap => {
+  DATA_DOC.onSnapshot(snap => {
     if (isSyncing || !snap.exists()) return;
     const incoming = snap.data().tasks || [];
     if (JSON.stringify(incoming) !== JSON.stringify(tasks)) {
@@ -1142,7 +1138,7 @@ function renderTasks() {
     ` : '';
 
     return `
-      <tr onclick="window.openTaskModal(${task.id})">
+      <tr onclick="openTaskModal(${task.id})">
         <td>
           ${task.product ? `<span class="product-badge">${task.product}</span>` : '—'}
         </td>
@@ -1188,7 +1184,7 @@ function renderTasks() {
     const latestNote = task.notes && task.notes.length > 0 ? task.notes[0] : null;
 
     return `
-      <div class="task-card" onclick="window.openTaskModal(${task.id})">
+      <div class="task-card" onclick="openTaskModal(${task.id})">
         <div class="task-card-header">
           <div class="task-card-title">${task.subject || 'Untitled'}</div>
           <span class="status-badge ${statusClass}" style="font-size: 10px; padding: 4px 8px;">
@@ -1520,14 +1516,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Expose all onclick functions to window ──
-window.saveTask = saveTask;
-window.deleteTask = deleteTask;
-window.closeModal = closeModal;
-window.exportToJSON = exportToJSON;
-window.importData = importData;
-window.openAddModal = openAddModal;
-window.openTaskModal = openTaskModal;
-window.addNote = addNote;
+// classic script — all functions are global
 </script>
 <!-- Toast -->
 <div id="crm-toast" class="crm-toast"></div>
@@ -1547,7 +1536,7 @@ window.addNote = addNote;
       <label class="auth-label">Password</label>
       <input class="auth-input" id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="auth-btn" id="auth-btn" onclick="window.doLogin()">Sign In</button>
+    <button class="auth-btn" id="auth-btn" onclick="doLogin()">Sign In</button>
   </div>
 </div>
 </body>
