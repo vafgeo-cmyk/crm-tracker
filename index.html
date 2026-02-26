@@ -944,7 +944,7 @@ const firebaseConfig = {
   messagingSenderId: "449784720463",
   appId: "1:449784720463:web:027c8e6ff4abb090e98e3a"
 };
-const fbApp = initializeApp(firebaseConfig, 'crm-app');
+const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 const DATA_DOC = doc(db, 'crm', 'data');
