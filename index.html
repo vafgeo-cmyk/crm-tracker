@@ -670,6 +670,19 @@
   }
 
   /* ── Tag input (multi-select) ── */
+  .tag-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--navy2); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); z-index: 500;
+    max-height: 220px; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .tag-dropdown-item {
+    padding: 9px 14px; font-size: 13px; color: var(--text2);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .tag-dropdown-item:hover, .tag-dropdown-item.active { background: rgba(26,107,255,0.15); color: var(--text); }
+  .tag-input-outer { position: relative; }
   .tag-input-wrap {
     display: flex; flex-wrap: wrap; gap: 6px;
     background: var(--surface); border: 1px solid var(--border);
@@ -827,9 +840,13 @@
         <div class="form-row">
           <div>
             <label class="form-label">DMG Product</label>
-            <div class="tag-input-wrap" id="product-tag-wrap" onclick="document.getElementById('product-tag-input').focus()">
-              <input class="tag-text-input" id="product-tag-input" placeholder="Type and press Enter…"
-                onkeydown="handleTagKey(event,'products')" type="text">
+            <div class="tag-input-outer">
+              <div class="tag-input-wrap" id="product-tag-wrap" onclick="document.getElementById('product-tag-input').focus()">
+                <input class="tag-text-input" id="product-tag-input" placeholder="Select or type a product…"
+                  onkeydown="handleProductKey(event)" oninput="filterProductDropdown()" 
+                  onfocus="showProductDropdown()" autocomplete="off" type="text">
+              </div>
+              <div class="tag-dropdown" id="product-dropdown" style="display:none"></div>
             </div>
           </div>
           <div>
@@ -943,6 +960,80 @@ const tagConfig = {
   crmOwners: { wrap: 'crm-owner-tag-wrap', input: 'crm-owner-tag-input' },
   mktOwners: { wrap: 'mkt-owner-tag-wrap', input: 'mkt-owner-tag-input' }
 };
+
+// ── Product dropdown ──
+const PRODUCT_LIST = ["ALL", "The Mail Subscription", "Mail Subscriptions", "The Mail", "Partners", "Twipe", "The Mail+", "MyMail", "Mail+ Editions", "Mail+", "MOL", "Circulation", "Mail Essential", "Mail Rewards", "Mail Online", "Print", "YOU", "MOL Newsletters", "iMovo", "Daily Mail", "Mail Shop", "inewspaper", "YouBeauty", "Mail Travel", "Mail Finance", "YOU Beauty", "MOL Travel", "MOL Advertising", "NS", "METRO", "Metro Travel", "TiM", "This Is Money", "Morning Brief", "Palace Confidential", "Crime Desk", "The Knowledge", "i", "Longer-term Planning/Projects"];
+let dropdownActiveIdx = -1;
+
+function showProductDropdown() {
+  filterProductDropdown();
+  document.getElementById('product-dropdown').style.display = 'block';
+}
+
+function hideProductDropdown() {
+  setTimeout(() => { document.getElementById('product-dropdown').style.display = 'none'; dropdownActiveIdx = -1; }, 150);
+}
+
+function filterProductDropdown() {
+  const val = document.getElementById('product-tag-input').value.toLowerCase();
+  const dd = document.getElementById('product-dropdown');
+  const filtered = PRODUCT_LIST.filter(p => p.toLowerCase().includes(val) && !tagState.products.includes(p));
+  if (!filtered.length) { dd.style.display = 'none'; return; }
+  dd.style.display = 'block';
+  dd.innerHTML = filtered.map((p, i) => 
+    `<div class="tag-dropdown-item" onmousedown="selectProduct('${p.replace(/'/g, "\'")}')" data-idx="${i}">${p}</div>`
+  ).join('');
+  dropdownActiveIdx = -1;
+}
+
+function selectProduct(val) {
+  if (val && !tagState.products.includes(val)) {
+    tagState.products.push(val);
+    renderTagPills('products');
+  }
+  document.getElementById('product-tag-input').value = '';
+  document.getElementById('product-dropdown').style.display = 'none';
+  dropdownActiveIdx = -1;
+}
+
+function handleProductKey(e) {
+  const dd = document.getElementById('product-dropdown');
+  const items = dd.querySelectorAll('.tag-dropdown-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    dropdownActiveIdx = Math.min(dropdownActiveIdx + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === dropdownActiveIdx));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    dropdownActiveIdx = Math.max(dropdownActiveIdx - 1, 0);
+    items.forEach((el, i) => el.classList.toggle('active', i === dropdownActiveIdx));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (dropdownActiveIdx >= 0 && items[dropdownActiveIdx]) {
+      items[dropdownActiveIdx].dispatchEvent(new MouseEvent('mousedown'));
+    } else {
+      const val = document.getElementById('product-tag-input').value.trim();
+      if (val && !tagState.products.includes(val)) {
+        tagState.products.push(val);
+        renderTagPills('products');
+        document.getElementById('product-tag-input').value = '';
+        dd.style.display = 'none';
+      }
+    }
+  } else if (e.key === 'Escape') {
+    dd.style.display = 'none';
+  } else if (e.key === 'Backspace' && !document.getElementById('product-tag-input').value && tagState.products.length > 0) {
+    tagState.products.pop();
+    renderTagPills('products');
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.tag-input-outer')) {
+    document.getElementById('product-dropdown').style.display = 'none';
+  }
+});
 
 function renderTagPills(field) {
   const { wrap, input } = tagConfig[field];
