@@ -705,6 +705,101 @@
   }
   .tag-text-input::placeholder { color: var(--text3); }
 
+  /* ── App layout with sidebar ── */
+  body { padding: 0 !important; }
+  .app-layout { display: flex; min-height: 100vh; }
+
+  .sidebar {
+    width: 220px; min-width: 220px;
+    background: var(--navy2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: fixed; top: 0; left: 0; bottom: 0;
+    z-index: 50; overflow-y: auto;
+  }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--surface2); }
+
+  .sidebar-logo {
+    padding: 20px 18px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-logo-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px; font-weight: 800;
+    color: var(--text); line-height: 1.2;
+  }
+  .sidebar-logo-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  .sidebar-section-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--text3); padding: 16px 18px 6px;
+  }
+
+  .sidebar-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 18px; cursor: pointer;
+    font-size: 13px; color: var(--text2);
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .sidebar-nav-item.active {
+    background: rgba(26,107,255,0.12);
+    color: var(--blue-light);
+    border-left-color: var(--blue);
+  }
+  .sidebar-nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+  .sidebar-nav-badge {
+    margin-left: auto;
+    font-size: 10px; font-weight: 600;
+    background: rgba(138,163,189,0.15);
+    color: var(--text3);
+    padding: 1px 7px; border-radius: 10px;
+  }
+
+  .sidebar-stats {
+    margin-top: auto;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .sidebar-stat-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text3); margin-bottom: 5px;
+  }
+  .sidebar-stat-row strong { color: var(--text2); }
+
+  .main-content {
+    margin-left: 220px;
+    flex: 1; min-width: 0;
+    padding: 20px;
+  }
+
+  /* Archive view */
+  #archive-view { display: none; }
+  #archive-view.active { display: block; }
+  #main-view.hidden { display: none; }
+
+  .archive-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .archive-card:hover { border-color: var(--border2); }
+
+  /* Mobile: hide sidebar, restore padding */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main-content { margin-left: 0; }
+    body { padding: 12px !important; }
+  }
+
   body:not(.is-admin) .admin-only { display: none !important; }
   .auth-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s; }
   .auth-overlay.open { opacity:1;pointer-events:all; }
@@ -729,7 +824,60 @@
 </style>
 </head>
 <body>
-  <div class="container">
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-title">DMG CRM<br>Tracker</div>
+      <div class="sidebar-logo-sub">Track all CRM projects and tasks</div>
+    </div>
+
+    <div class="sidebar-section-label">Navigation</div>
+    <div class="sidebar-nav-item active" id="snav-all" onclick="showView('all')">
+      <span class="sidebar-nav-icon">📋</span>
+      <span>All Projects</span>
+    </div>
+    <div class="sidebar-nav-item" id="snav-archive" onclick="showView('archive')">
+      <span class="sidebar-nav-icon">🗂️</span>
+      <span>Archive</span>
+      <span class="sidebar-nav-badge" id="archive-badge">0</span>
+    </div>
+
+    <div class="sidebar-section-label">Filter by Status</div>
+    <div class="sidebar-nav-item" id="snav-all-status" onclick="setSidebarFilter('all')">
+      <span class="sidebar-nav-icon">🔵</span>
+      <span>All Tasks</span>
+    </div>
+    <div class="sidebar-nav-item" id="snav-inprogress" onclick="setSidebarFilter('In Progress')">
+      <span class="sidebar-nav-icon">🟡</span>
+      <span>In Progress</span>
+    </div>
+    <div class="sidebar-nav-item" id="snav-notstarted" onclick="setSidebarFilter('Not Started')">
+      <span class="sidebar-nav-icon">🔴</span>
+      <span>Not Started</span>
+    </div>
+    <div class="sidebar-nav-item" id="snav-complete" onclick="setSidebarFilter('Complete')">
+      <span class="sidebar-nav-icon">🟢</span>
+      <span>Complete</span>
+    </div>
+    <div class="sidebar-nav-item" id="snav-onhold" onclick="setSidebarFilter('On Hold')">
+      <span class="sidebar-nav-icon">🟠</span>
+      <span>On Hold</span>
+    </div>
+
+    <div class="sidebar-stats">
+      <div class="sidebar-stat-row"><span>Total Tasks</span><strong id="sb-total">0</strong></div>
+      <div class="sidebar-stat-row"><span>Complete</span><strong id="sb-complete" style="color:var(--green)">0</strong></div>
+      <div class="sidebar-stat-row"><span>In Progress</span><strong id="sb-progress" style="color:var(--yellow)">0</strong></div>
+      <div class="sidebar-stat-row"><span>Not Started</span><strong id="sb-notstarted" style="color:var(--red)">0</strong></div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main-content">
+  <div id="main-view">
+  <div class="container" style="max-width:100%;padding:0">
     <div class="header">
       <div>
         <div class="header-title">DMG CRM Tracker</div>
@@ -816,7 +964,22 @@
         <div>No tasks yet. Click "Add Task" to get started.</div>
       </div>
     </div>
+  </div><!-- /container -->
+  </div><!-- /main-view -->
+
+  <!-- Archive View -->
+  <div id="archive-view">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800">🗂️ Archive</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:4px">Completed tasks with due date 7+ days ago or no due date</div>
+      </div>
+    </div>
+    <div id="archive-list"></div>
   </div>
+
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
 
   <!-- Task Detail Modal -->
   <div class="modal" id="task-modal" onclick="closeModal(event)">
@@ -1156,6 +1319,116 @@ async function saveTasks() {
   finally { isSyncing = false; }
 }
 
+// ── Sidebar / view switching ──
+let currentView = 'all';      // 'all' | 'archive'
+let sidebarStatusFilter = ''; // '' = all, or 'In Progress' etc.
+
+function isArchived(task) {
+  if (task.status !== 'Complete') return false;
+  if (!task.dueDate) return true; // Complete + no due date → archive
+  const due = new Date(task.dueDate);
+  const now = new Date(); now.setHours(0,0,0,0);
+  const diff = Math.round((now - due) / 86400000);
+  return diff >= 7; // Complete + due date 7+ days in past → archive
+}
+
+function showView(view) {
+  currentView = view;
+  document.getElementById('main-view').classList.toggle('hidden', view === 'archive');
+  document.getElementById('archive-view').classList.toggle('active', view === 'archive');
+
+  // Sidebar nav highlight
+  document.querySelectorAll('.sidebar-nav-item').forEach(el => {
+    if (['snav-all','snav-archive'].includes(el.id)) el.classList.remove('active');
+  });
+  document.getElementById('snav-' + (view === 'archive' ? 'archive' : 'all')).classList.add('active');
+
+  if (view === 'archive') renderArchive();
+  else { filterTasks(); }
+}
+
+function setSidebarFilter(status) {
+  sidebarStatusFilter = status === 'all' ? '' : status;
+  // Switch to main view if on archive
+  if (currentView === 'archive') showView('all');
+
+  // Update sidebar highlights — clear status items then set active
+  ['snav-all-status','snav-inprogress','snav-notstarted','snav-complete','snav-onhold'].forEach(id => {
+    document.getElementById(id)?.classList.remove('active');
+  });
+  const map = { '': 'snav-all-status', 'In Progress': 'snav-inprogress', 'Not Started': 'snav-notstarted', 'Complete': 'snav-complete', 'On Hold': 'snav-onhold' };
+  if (map[sidebarStatusFilter]) document.getElementById(map[sidebarStatusFilter]).classList.add('active');
+
+  // Push filter into the existing status dropdown so getFilteredTasks picks it up
+  const sel = document.getElementById('status-filter');
+  if (sel) sel.value = sidebarStatusFilter;
+  filterTasks();
+}
+
+function renderArchive() {
+  const archived = tasks.filter(isArchived);
+  const list = document.getElementById('archive-list');
+  if (!archived.length) {
+    list.innerHTML = `<div style="text-align:center;padding:60px 20px;color:var(--text3)">
+      <div style="font-size:48px;margin-bottom:12px">🗂️</div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;color:var(--text2);margin-bottom:6px">Archive is empty</div>
+      <div style="font-size:13px">Completed tasks with a due date 7+ days ago (or no due date) will appear here.</div>
+    </div>`;
+    return;
+  }
+
+  // Group by year of due date (or "No Due Date")
+  const byGroup = {};
+  archived.forEach(t => {
+    const grp = t.dueDate ? new Date(t.dueDate).getFullYear().toString() : 'No Due Date';
+    if (!byGroup[grp]) byGroup[grp] = [];
+    byGroup[grp].push(t);
+  });
+  const sortedGroups = Object.keys(byGroup).sort((a,b) => b === 'No Due Date' ? -1 : a === 'No Due Date' ? 1 : b - a);
+
+  list.innerHTML = sortedGroups.map(grp => `
+    <div style="margin-bottom:24px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:10px">
+        📁 ${grp} · ${byGroup[grp].length} task${byGroup[grp].length !== 1 ? 's' : ''}
+      </div>
+      ${byGroup[grp].map(task => {
+        const products = (task.products || (task.product ? [task.product] : [])).filter(Boolean);
+        const crm = (task.crmOwners || (task.crmOwner ? [task.crmOwner] : [])).filter(Boolean);
+        const mkt = (task.mktOwners || (task.marketingOwner ? [task.marketingOwner] : [])).filter(Boolean);
+        const dueStr = task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+        const latestNote = task.notes && task.notes.length > 0 ? task.notes[0] : null;
+        return `<div class="archive-card" onclick="openTaskModal(${task.id})">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(34,217,146,0.12);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">✅</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+              <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--text)">${task.subject || 'Untitled'}</span>
+              ${products.map(p => `<span class="product-badge" style="font-size:10px;padding:2px 7px">${p}</span>`).join('')}
+              ${task.jiraLink ? `<a href="${task.jiraLink}" target="_blank" class="jira-link" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation()">🔗 Jira</a>` : ''}
+            </div>
+            ${task.description ? `<div style="font-size:12px;color:var(--text3);margin-bottom:4px">${task.description.substring(0,100)}${task.description.length>100?'…':''}</div>` : ''}
+            ${latestNote ? `<div style="font-size:11px;color:var(--text3);display:flex;gap:5px;align-items:flex-start"><span>💬</span><span style="font-size:10px;white-space:nowrap">${new Date(latestNote.timestamp).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span><span style="flex:1;word-break:break-word">${latestNote.text.substring(0,120)}${latestNote.text.length>120?'…':''}</span></div>` : ''}
+          </div>
+          <div style="text-align:right;flex-shrink:0;font-size:11px;color:var(--text3)">
+            <div style="margin-bottom:4px">📅 ${dueStr}</div>
+            ${crm.length ? `<div>👤 ${crm.join(', ')}</div>` : ''}
+            ${mkt.length ? `<div>📱 ${mkt.join(', ')}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+function updateSidebarStats() {
+  const active = tasks.filter(t => !isArchived(t));
+  document.getElementById('sb-total').textContent = active.length;
+  document.getElementById('sb-complete').textContent = active.filter(t => t.status === 'Complete').length;
+  document.getElementById('sb-progress').textContent = active.filter(t => t.status === 'In Progress').length;
+  document.getElementById('sb-notstarted').textContent = active.filter(t => t.status === 'Not Started').length;
+  const archived = tasks.filter(isArchived);
+  document.getElementById('archive-badge').textContent = archived.length;
+}
+
 function startRealtimeSync() {
   DATA_DOC.onSnapshot(snap => {
     if (isSyncing || !snap.exists) return;
@@ -1179,10 +1452,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ── Stats ──
 function updateStats() {
-  document.getElementById('stat-total').textContent = tasks.length;
-  document.getElementById('stat-complete').textContent = tasks.filter(t => t.status === 'Complete').length;
-  document.getElementById('stat-progress').textContent = tasks.filter(t => t.status === 'In Progress').length;
-  document.getElementById('stat-not-started').textContent = tasks.filter(t => t.status === 'Not Started').length;
+  const active = tasks.filter(t => !isArchived(t));
+  document.getElementById('stat-total').textContent = active.length;
+  document.getElementById('stat-complete').textContent = active.filter(t => t.status === 'Complete').length;
+  document.getElementById('stat-progress').textContent = active.filter(t => t.status === 'In Progress').length;
+  document.getElementById('stat-not-started').textContent = active.filter(t => t.status === 'Not Started').length;
+  updateSidebarStats();
 }
 
 // ── Filters ──
