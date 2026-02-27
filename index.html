@@ -801,8 +801,11 @@
   }
 
   body:not(.is-admin) .admin-only { display: none !important; }
-  .auth-overlay { position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.25s; }
+  .auth-overlay { position:fixed;inset:0;background:rgba(10,18,30,0.97);backdrop-filter:blur(12px);z-index:9999;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.3s; }
   .auth-overlay.open { opacity:1;pointer-events:all; }
+  /* Hide entire app until authenticated */
+  .app-layout { display:none !important; }
+  .app-layout.authenticated { display:flex !important; }
   .auth-card { background:#162336;border:1px solid rgba(255,255,255,0.12);border-radius:20px;width:100%;max-width:380px;padding:36px 32px 28px;transform:translateY(24px);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 24px 60px rgba(0,0,0,0.5); }
   .auth-overlay.open .auth-card { transform:translateY(0); }
   .auth-logo-icon { font-size:36px;text-align:center;display:block;margin-bottom:8px; }
@@ -838,7 +841,7 @@
       <span class="sidebar-nav-icon">📋</span>
       <span>All Projects</span>
     </div>
-    <div class="sidebar-nav-item" id="snav-archive" onclick="showView('archive')">
+    <div class="sidebar-nav-item admin-only" id="snav-archive" onclick="showView('archive')">
       <span class="sidebar-nav-icon">🗂️</span>
       <span>Archive</span>
       <span class="sidebar-nav-badge" id="archive-badge">0</span>
@@ -1260,18 +1263,51 @@ function showToast(msg) {
 }
 
 // ── Auth ──
-function applyAdminUI(loggedIn) {
-  isAdmin = loggedIn;
-  document.body.classList.toggle('is-admin', loggedIn);
-  document.getElementById('admin-logged-in').style.display = loggedIn ? '' : 'none';
-  document.getElementById('admin-logged-out').style.display = loggedIn ? 'none' : '';
+// ── Auth gate ──
+// authReady tracks whether Firebase has resolved the initial auth state
+let authInitialised = false;
+
+function lockApp() {
+  // Hide everything, wipe data so nothing leaks
+  document.querySelector('.app-layout').classList.remove('authenticated');
+  tasks = [];
+  if (currentView === 'archive') { currentView = 'all'; }
+  // Show login overlay
+  document.getElementById('auth-overlay').classList.add('open');
+  document.getElementById('auth-error').classList.remove('show');
+  document.getElementById('auth-password').value = '';
+  setTimeout(() => { try { document.getElementById('auth-email').focus(); } catch(e){} }, 100);
 }
+
+function unlockApp() {
+  document.getElementById('auth-overlay').classList.remove('open');
+  document.querySelector('.app-layout').classList.add('authenticated');
+}
+
+auth.onAuthStateChanged(async user => {
+  isAdmin = !!user;
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.getElementById('admin-logged-in').style.display = isAdmin ? '' : 'none';
+  document.getElementById('admin-logged-out').style.display = 'none';
+
+  if (isAdmin) {
+    unlockApp();
+    await loadTasks();
+    renderTasks();
+    updateStats();
+    populateFilters();
+    startRealtimeSync();
+  } else {
+    lockApp();
+  }
+  authInitialised = true;
+});
 
 function showLoginModal() {
   document.getElementById('auth-overlay').classList.add('open');
   document.getElementById('auth-error').classList.remove('show');
   document.getElementById('auth-password').value = '';
-  setTimeout(() => document.getElementById('auth-email').focus(), 100);
+  setTimeout(() => { try { document.getElementById('auth-email').focus(); } catch(e){} }, 100);
 }
 
 function hideLoginModal() {
@@ -1287,19 +1323,18 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Signing in…'; errEl.classList.remove('show');
   try {
     await auth.signInWithEmailAndPassword(email, password);
-    hideLoginModal();
-    showToast('✅ Signed in as admin');
+    // onAuthStateChanged will handle unlocking
   } catch(e) {
     errEl.textContent = 'Incorrect email or password.'; errEl.classList.add('show');
-  } finally { btn.disabled = false; btn.textContent = 'Sign In'; }
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
 }
 
 async function doLogout() {
+  _realtimeSyncStarted = false; // allow re-subscribe on next login
   await auth.signOut();
-  showToast('👋 Signed out');
+  // onAuthStateChanged fires → lockApp()
 }
-
-auth.onAuthStateChanged(user => applyAdminUI(!!user));
 
 // ── Firebase load/save ──
 async function loadTasks() {
@@ -1429,7 +1464,10 @@ function updateSidebarStats() {
   document.getElementById('archive-badge').textContent = archived.length;
 }
 
+let _realtimeSyncStarted = false;
 function startRealtimeSync() {
+  if (_realtimeSyncStarted) return;
+  _realtimeSyncStarted = true;
   DATA_DOC.onSnapshot(snap => {
     if (isSyncing || !snap.exists) return;
     const incoming = snap.data().tasks || [];
@@ -1442,12 +1480,9 @@ function startRealtimeSync() {
 }
 
 // ── Init ──
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadTasks();
-  renderTasks();
-  updateStats();
-  populateFilters();
-  startRealtimeSync();
+document.addEventListener('DOMContentLoaded', () => {
+  // App stays hidden (display:none via CSS) until onAuthStateChanged resolves.
+  // No data is loaded, no UI is rendered until Firebase confirms a valid session.
 });
 
 // ── Stats ──
@@ -1672,7 +1707,7 @@ document.addEventListener('keydown', e => {
   <div class="auth-card">
     <div class="auth-logo"><div class="auth-logo-icon">🔐</div></div>
     <div class="auth-title">Admin Login</div>
-    <div class="auth-subtitle">Sign in to edit and manage tasks</div>
+    <div class="auth-subtitle">Sign in to access the CRM Tracker</div>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-field">
       <label class="auth-label">Email</label>
