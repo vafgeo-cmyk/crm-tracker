@@ -1488,8 +1488,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── Stats ──
 function updateStats() {
   const active = tasks.filter(t => !isArchived(t));
-  document.getElementById('stat-total').textContent = active.length;
-  document.getElementById('stat-complete').textContent = active.filter(t => t.status === 'Complete').length;
+  const archived = tasks.filter(t => isArchived(t));
+  document.getElementById('stat-total').textContent = tasks.length;
+  document.getElementById('stat-complete').textContent = active.filter(t => t.status === 'Complete').length + archived.length;
   document.getElementById('stat-progress').textContent = active.filter(t => t.status === 'In Progress').length;
   document.getElementById('stat-not-started').textContent = active.filter(t => t.status === 'Not Started').length;
   updateSidebarStats();
