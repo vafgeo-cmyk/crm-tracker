@@ -1518,6 +1518,7 @@ function getFilteredTasks() {
   const sf = document.getElementById('status-filter').value;
   const of_ = document.getElementById('owner-filter').value;
   return tasks.filter(t =>
+    !isArchived(t) &&
     (!s || (t.subject||'').toLowerCase().includes(s) || (t.description||'').toLowerCase().includes(s) || (t.product||'').toLowerCase().includes(s)) &&
     (!pf || t.product === pf) &&
     (!sf || t.status === sf) &&
